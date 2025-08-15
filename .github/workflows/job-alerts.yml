@@ -3,7 +3,7 @@ name: EdTech Job Alerts
 on:
   workflow_dispatch:  # allows manual run
   schedule:
-    - cron: "0 */3 * * *"  # runs daily at 12:00 UTC
+    - cron: "0 */3 * * *"
 
 jobs:
   run:
