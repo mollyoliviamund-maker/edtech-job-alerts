@@ -4,11 +4,7 @@ import json
 import time
 import smtplib
 from datetime import datetime
-from email.mime_text import MIMEText
-try:
-    from email.mime.text import MIMEText  # fallback for some editors
-except:
-    pass
+from email.mime.text import MIMEText  # ✅ correct import
 
 import requests
 from bs4 import BeautifulSoup
