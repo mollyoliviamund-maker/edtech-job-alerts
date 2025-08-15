@@ -9,7 +9,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # allow push of seen_jobs.json
+      contents: write     # allow committing seen_jobs.json
     steps:
       - uses: actions/checkout@v4
 
