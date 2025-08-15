@@ -9,7 +9,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # lets the workflow save seen_jobs.json back to the repo
+      contents: write     # allow push of seen_jobs.json
     steps:
       - uses: actions/checkout@v4
 
@@ -29,10 +29,10 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: python job_checker.py
 
-      - name: Commit seen file
+      - name: Commit seen file (ignore if nothing changed)
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add seen_jobs.json || true
           git commit -m "Update seen jobs" || true
-          git push
+          git push || true
