@@ -93,6 +93,15 @@ def url_host(url):
     m = re.match(r"https?://([^/]+)", url)
     return m.group(1) if m else ""
 
+def normalize_url(u: str) -> str:
+    if not u:
+        return ""
+    u = u.strip()
+    u = re.sub(r"[?#].*$", "", u)  # strip query + fragments
+    if u.endswith("/"):
+        u = u[:-1]
+    return u.lower()
+
 # ---------------- FETCHERS ----------------
 def fetch_greenhouse(board, company):
     out = []
@@ -143,7 +152,7 @@ def fetch_playwright(url, company):
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
             page.goto(url, timeout=60000)
-            page.wait_for_timeout(5000)  # wait for JS to load jobs
+            page.wait_for_timeout(5000)
             html = page.content()
             browser.close()
         soup = BeautifulSoup(html, "html.parser")
@@ -167,19 +176,19 @@ def fetch_all_jobs():
         try:
             if t == "greenhouse": all_jobs += fetch_greenhouse(s["board"], c)
             elif t == "lever": all_jobs += fetch_lever(s["lever_company"], c)
-            elif t == "autodetect" or t == "workday_page": all_jobs += fetch_from_page(s["page_url"], c)
+            elif t in ("autodetect", "workday_page"): all_jobs += fetch_from_page(s["page_url"], c)
             elif t == "playwright": all_jobs += fetch_playwright(s["url"], c)
         except Exception as e:
             print(f"[{t}:{c}] {e}")
         time.sleep(0.4)
 
-    # Dedupe
     clean, seen_urls = [], set()
     for j in all_jobs:
-        u = (j.get("url") or "").strip()
+        u = normalize_url(j.get("url") or "")
         if not u or u in seen_urls:
             continue
         seen_urls.add(u)
+        j["url"] = u
         j["title"] = norm(j.get("title", ""))
         j["company"] = norm(j.get("company", ""))
         clean.append(j)
@@ -216,11 +225,11 @@ def main():
     seen = load_seen()
     jobs = fetch_all_jobs()
     first_run = not os.path.exists(SEEN_FILE)
-    new_jobs = jobs if first_run else [j for j in jobs if j["url"] not in seen]
+    new_jobs = jobs if first_run else [j for j in jobs if normalize_url(j["url"]) not in seen]
 
     if new_jobs:
         send_email(new_jobs)
-        seen.update(j["url"] for j in new_jobs)
+        seen.update(normalize_url(j["url"]) for j in new_jobs)
         save_seen(seen)
         print(f"Sent {len(new_jobs)} jobs.")
     else:
