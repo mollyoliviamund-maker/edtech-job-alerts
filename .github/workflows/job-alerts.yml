@@ -34,4 +34,7 @@ jobs:
 
       - name: Run job checker
         env:
-          EMAIL_A_
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        run: |
+          python job_checker.py
