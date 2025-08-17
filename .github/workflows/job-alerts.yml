@@ -2,9 +2,9 @@ name: Job Checker
 
 on:
   schedule:
-    # Run every 2 hours
+    # Run every 2 hours (UTC)
     - cron: "0 */2 * * *"
-    # Extra run every 2 weeks (Sunday at midnight UTC)
+    # Extra run every 14 days at 00:00 UTC that clears the dedupe file
     - cron: "0 0 */14 * *"
   workflow_dispatch:
 
@@ -15,6 +15,17 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      # Restore the dedupe file from the last run
+      - name: Restore seen jobs cache
+        id: seen-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: seen_jobs.json
+          key: seen-${{ github.ref }}
+          restore-keys: |
+            seen-${{ github.ref }}-
+            seen-
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -23,13 +34,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 playwright
-          playwright install --with-deps chromium
+          pip install -r requirements.txt
+          # Install Playwright browsers on the runner
+          python -m playwright install --with-deps chromium
 
+      # Clear the dedupe file on the biweekly run
       - name: Clear seen_jobs.json every 2 weeks
         if: github.event.schedule == '0 0 */14 * *'
         run: |
-          echo "Clearing seen_jobs.json because it's the 2-week run"
+          echo "Clearing seen_jobs.json (biweekly reset)"
           rm -f seen_jobs.json
 
       - name: Run job checker
@@ -37,4 +50,14 @@ jobs:
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         run: |
+          # Ensure dedupe file exists so it can be updated + cached
+          [ -f seen_jobs.json ] || echo "[]" > seen_jobs.json
           python job_checker.py
+
+      # Save the updated dedupe file for the next run
+      - name: Save seen jobs cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: seen_jobs.json
+          key: seen-${{ github.ref }}-${{ github.run_id }}
